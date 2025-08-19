@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HMI Test Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .code-block { background-color: #1e293b; color: #e2e8f0; font-family: 'Courier New', Courier, monospace; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; white-space: pre; }
+        .toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 2px; padding: 16px; position: fixed; z-index: 1; left: 50%; transform: translateX(-50%); bottom: 30px; opacity: 0; transition: opacity 0.5s, visibility 0.5s; }
+        .toast.show { visibility: visible; opacity: 1; }
+        .spinner { border-top-color: transparent; }
+        .modal-overlay { transition: opacity 0.3s ease; }
+        #inspector-screenshot-container { position: relative; }
+        #inspector-highlight { position: absolute; border: 2px solid red; background-color: rgba(255,0,0,0.2); box-sizing: border-box; pointer-events: none; }
+        .progress-bar { background-color: #e5e7eb; }
+        .progress-bar-fill { background-color: #4f46e5; transition: width 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-slate-900">HMI Test Suite</h1>
+            <p class="text-slate-600 mt-2">Visually build, execute, and report on your HMI test cases.</p>
+        </header>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <!-- Left Column: Builder -->
+            <div class="bg-white p-6 rounded-lg shadow-lg space-y-6">
+                <div>
+                    <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Configuration</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="device-select" class="block text-sm font-medium text-slate-700">Device ID</label>
+                            <div class="flex items-center gap-2">
+                                <select id="device-select" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"><option>Detecting...</option></select>
+                                <button id="refresh-devices-btn" class="p-2 mt-1 rounded-md bg-slate-200 hover:bg-slate-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg></button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="app-package" class="block text-sm font-medium text-slate-700">App Package</label>
+                            <input type="text" id="app-package" placeholder="com.android.settings" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <div class="sm:col-span-2">
+                             <label for="app-activity" class="block text-sm font-medium text-slate-700">App Activity</label>
+                            <input type="text" id="app-activity" placeholder=".Settings" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h2 class="text-2xl font-semibold">Test Case</h2>
+                         <button id="inspect-btn" class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-purple-700 text-sm">Inspect Elements</button>
+                    </div>
+                    <div id="test-steps-list" class="space-y-2 mb-4"></div>
+                    <button id="add-step-btn" class="w-full bg-slate-200 text-slate-700 text-sm font-semibold py-1 px-3 rounded-md hover:bg-slate-300">+ Add Step</button>
+                </div>
+            </div>
+
+            <!-- Right Column: Report -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-2xl font-semibold">Execution</h2>
+                    <button id="execute-tests-btn" class="bg-emerald-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-emerald-700 flex items-center justify-center gap-2">
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                        <div id="spinner" class="spinner w-5 h-5 border-4 border-white rounded-full animate-spin hidden"></div>
+                        <span id="execute-text">Execute Tests</span>
+                    </button>
+                </div>
+                <div id="progress-section" class="mb-4 hidden">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-base font-medium text-slate-700">Overall Progress</span>
+                        <span id="progress-label" class="text-sm font-medium text-slate-700">0 / 0</span>
+                    </div>
+                    <div class="w-full progress-bar rounded-full h-2.5">
+                        <div id="progress-bar-fill" class="progress-bar-fill h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="report-summary" class="hidden"></div>
+                <pre id="report-output" class="code-block h-[60vh] overflow-auto bg-slate-900">Awaiting test execution...</pre>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    
+    <!-- Inspector Modal -->
+    <div id="inspector-modal" class="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 class="text-xl font-semibold">Visual Element Inspector</h3>
+                    <button id="close-inspector-btn" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+                </div>
+                <div class="p-4 flex-grow overflow-y-auto grid grid-cols-3 gap-4">
+                    <div class="col-span-2 overflow-auto bg-slate-200 p-2 rounded-md flex items-center justify-center">
+                        <div id="inspector-screenshot-container" class="inline-block">
+                            <img id="inspector-screenshot" src="" class="max-w-full h-auto shadow-md"/>
+                            <div id="inspector-highlight"></div>
+                        </div>
+                    </div>
+                    <div class="col-span-1 overflow-auto">
+                        <h4 class="font-semibold mb-2">Element Properties</h4>
+                        <p id="inspector-instructions" class="text-sm text-slate-500">Click on an element in the screenshot to see its properties.</p>
+                        <div id="properties-list" class="mt-4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./renderer.js"></script>
+</body>
+</html>

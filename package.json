@@ -1,0 +1,18 @@
+{
+  "name": "hmi-test-builder",
+  "version": "1.0.0",
+  "description": "A desktop app to build, execute, and report on HMI test cases.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.0.0"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
